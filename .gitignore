@@ -1,2 +1,15 @@
+<<<<<<< Updated upstream
 server/.env
 node_modules
+=======
+# env files
+server/.env
+.env
+
+# dependencies
+node_modules
+server/node_modules
+
+# logs
+*.log
+>>>>>>> Stashed changes
