@@ -1,15 +1,36 @@
 import { Router } from "express";
 import axios from "axios";
 import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-/**
- * POST /api/review
- * Generate AI review + save to DB
- */
-router.post("/review", async (req, res) => {
+const JWT_SECRET = "supersecretkey"; // later move to .env
+
+// -------------------------
+// 🔐 AUTH MIDDLEWARE
+// -------------------------
+const authMiddleware = (req: any, res: any, next: any) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.userId = decoded.userId;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+};
+
+// -------------------------
+// 🤖 CREATE AI REVIEW (USER-BOUND)
+// -------------------------
+router.post("/review", authMiddleware, async (req: any, res) => {
   try {
     const { code } = req.body;
 
@@ -19,7 +40,7 @@ router.post("/review", async (req, res) => {
 
     // 1. Call Ollama
     const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "llama3.2:1b",
+      model: "codellama",
       prompt: `
 You are a senior software engineer.
 
@@ -36,15 +57,15 @@ Return:
 
     const aiResult = response.data.response;
 
-    // 2. Save to DB
+    // 2. Save per user
     const saved = await prisma.review.create({
       data: {
         code,
         result: aiResult,
+        userId: req.userId,
       },
     });
 
-    // 3. Return response
     res.json({
       id: saved.id,
       review: aiResult,
@@ -58,16 +79,24 @@ Return:
   }
 });
 
-/**
- * GET /api/reviews
- * Fetch all reviews
- */
-router.get("/reviews", async (req, res) => {
-  const reviews = await prisma.review.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+// -------------------------
+// 📜 GET USER HISTORY
+// -------------------------
+router.get("/reviews", authMiddleware, async (req: any, res) => {
+  try {
+    const reviews = await prisma.review.findMany({
+      where: {
+        userId: req.userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-  res.json(reviews);
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch reviews" });
+  }
 });
 
 export default router;
