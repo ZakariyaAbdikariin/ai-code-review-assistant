@@ -40,7 +40,7 @@ router.post("/review", authMiddleware, async (req: any, res) => {
 
     // 1. Call Ollama
     const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "codellama",
+    model: "llama3.2:1b",
       prompt: `
 You are a senior software engineer.
 
@@ -94,9 +94,87 @@ router.get("/reviews", authMiddleware, async (req: any, res) => {
     });
 
     res.json(reviews);
+
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch reviews" });
+    res.status(500).json({
+      error: "Failed to fetch reviews",
+    });
   }
 });
+
+// -------------------------
+// 🗑️ DELETE REVIEW
+// -------------------------
+router.delete("/reviews/:id", authMiddleware, async (req: any, res) => {
+  try {
+    const review = await prisma.review.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId,
+      },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        error: "Review not found",
+      });
+    }
+
+    await prisma.review.delete({
+      where: {
+        id: req.params.id,
+      },
+    });
+
+    res.json({
+      message: "Review deleted",
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Delete failed",
+    });
+  }
+});
+
+
+// -------------------------
+// ✏️ RENAME REVIEW
+// -------------------------
+router.patch("/reviews/:id", authMiddleware, async (req: any, res) => {
+  try {
+    const { title } = req.body;
+
+    const review = await prisma.review.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId,
+      },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        error: "Review not found",
+      });
+    }
+
+    const updated = await prisma.review.update({
+      where: {
+        id: req.params.id,
+      },
+      data: {
+        title,
+      },
+    });
+
+    res.json(updated);
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Rename failed",
+    });
+  }
+});
+
 
 export default router;

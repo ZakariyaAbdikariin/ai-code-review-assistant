@@ -6,6 +6,7 @@ import Editor from "@monaco-editor/react";
 
 type Review = {
   id: string;
+  title: string | null;
   code: string;
   result: string;
 };
@@ -22,7 +23,9 @@ export default function Home() {
   // 📜 LOAD HISTORY
   const loadHistory = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/reviews", {
+      const res = await axios.get(
+  `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+  {
         headers: {
           Authorization: `Bearer ${getToken()}`,
         },
@@ -45,7 +48,7 @@ export default function Home() {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/review",
+        `${process.env.NEXT_PUBLIC_API_URL}/review`,
         { code },
         {
           headers: {
@@ -102,12 +105,12 @@ return (
 
       {/* MONACO EDITOR */}
       <div style={{ border: "1px solid #ddd", height: "400px" }}>
-        <Editor
-          height="400px"
-																																																																																																								          defaultLanguage="javascript"
-          value={code}
-          onChange={(value) => setCode(value || "")}
-        />
+	<Editor
+  	  height="400px"
+  	  defaultLanguage="javascript"
+  	  value={code}
+  	  onChange={(value) => setCode(value || "")}
+	/>
       </div>
 
       {/* BUTTON */}
